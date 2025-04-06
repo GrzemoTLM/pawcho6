@@ -1,14 +1,20 @@
-FROM golang:1.21-alpine AS builder
+# syntax=docker/dockerfile:1.4
 
-ARG VERSION
-ENV VERSION=${VERSION}
+FROM alpine AS git-clone
+RUN apk add --no-cache git openssh
 
-WORKDIR /app
-COPY . .
+WORKDIR /repo
+RUN --mount=type=ssh \
+    git clone git@github.com:GrzemoTLM/pawcho6.git .
 
-RUN go build -ldflags="-X main.version=${VERSION}" -o app
 
-FROM scratch
-COPY --from=builder /app/app /app
-ENTRYPOINT ["/app"]
+FROM golang:alpine AS build
+WORKDIR /src
+COPY --from=git-clone /repo /src
+RUN go build -ldflags "-X main.version=1.0.0" -o /bin/app
+
+
+FROM alpine
+COPY --from=build /bin/app /bin/app
+ENTRYPOINT ["/bin/app"]
 
